@@ -1111,7 +1111,7 @@ export default function Home() {
                     {waking ? (
                       <>
                         Waking up (up to 30s)...
-                        <span className="block text-base">
+                        <span className="block">
                           The model sleeps when nobody&apos;s using it.
                         </span>
                       </>
