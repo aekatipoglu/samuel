@@ -84,5 +84,16 @@ ENV PYTHONPATH=/app/src:/app/pocket-tts \
     SAMUEL_HOST=0.0.0.0 \
     SAMUEL_PORT=8080
 
+# Compile librosa's numba code (pyin) now and keep it in the image. Otherwise
+# every cold start spends ~13 s of its warm-up pass in the JIT; with the cache
+# the pass takes ~1.5 s. Numba keys its cache on the CPU, and the machine that
+# builds this image is not the one that runs it, so compile for a generic CPU
+# (no measurable slowdown on a 5 s utterance). _warm_up swallows errors, so
+# check that something actually landed in the cache.
+ENV NUMBA_CACHE_DIR=/app/numba_cache \
+    NUMBA_CPU_NAME=generic
+RUN python -c "import samuel.server as s; s._model = s._load_model(); s._warm_up()" \
+ && test -n "$(ls -A /app/numba_cache)"
+
 EXPOSE 8080
 CMD ["python", "-m", "samuel.server"]
