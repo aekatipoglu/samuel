@@ -3,6 +3,7 @@
 import {
   useCallback,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -160,6 +161,22 @@ export default function Home() {
     () => "",
   );
   const ttsText = ttsTyped ?? ttsExampleLine;
+  const ttsBoxRef = useRef<HTMLTextAreaElement>(null);
+  /* The text box grows to fit what's typed instead of scrolling inside itself
+     (`rows` stays its minimum). Again on resize, since a narrower box wraps
+     into more lines. */
+  useLayoutEffect(() => {
+    const box = ttsBoxRef.current;
+    if (!box) return;
+    const fit = () => {
+      box.style.height = "auto";
+      // scrollHeight leaves out the border, which border-box height includes.
+      box.style.height = `${box.scrollHeight + box.offsetHeight - box.clientHeight}px`;
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [ttsText]);
   /** The committed clip answers, if any were generated for this checkpoint. */
   const [precomputed, setPrecomputed] = useState<PrecomputedIndex | null>(null);
   /** Is the mouth yours to play? While it is, the voicebox pad under the tract
@@ -951,6 +968,7 @@ export default function Home() {
             <div className="relative">
               <textarea
                 id="tts-text"
+                ref={ttsBoxRef}
                 value={ttsText}
                 onChange={(e) => setTtsText(e.currentTarget.value)}
                 /* Enter sends, as in a chat; Shift+Enter still breaks the line. */
