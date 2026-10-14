@@ -642,11 +642,15 @@ def tts(request: TtsRequest) -> dict:
         )
     from pocket_tts.models.text_chunking import prepare_text_prompt
 
+    from samuel.tts.text import normalize_numbers
+
     model, codec = _tts
     # Same text clean-up as Pocket TTS inference, with this model's settings
     # (config.yaml on the Hub): capitalised, terminal punctuation added.
     prompt, _ = prepare_text_prompt(
-        text, pad_with_spaces_for_short_inputs=False, remove_semicolons=False
+        normalize_numbers(text),
+        pad_with_spaces_for_short_inputs=False,
+        remove_semicolons=False,
     )
     tokens = torch.tensor(
         model.flow_lm.conditioner.tokenizer.sp.encode(prompt), dtype=torch.long

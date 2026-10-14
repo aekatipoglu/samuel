@@ -25,9 +25,9 @@ RUN pip install --no-cache-dir \
 
 # What the text-to-speech model adds: the vendored Pocket TTS code (copied in
 # below, not pip-installed, which would also pull in its CLI and web server)
-# imports these.
+# imports these, and samuel.tts.text spells out numbers with inflect.
 RUN pip install --no-cache-dir \
-      pyyaml requests safetensors sentencepiece
+      inflect pyyaml requests safetensors sentencepiece
 
 # Weights come from the Hub rather than the build context, so the image builds
 # from a git checkout alone — runs/ is 64 GB and never leaves the cluster. The
