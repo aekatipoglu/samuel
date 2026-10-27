@@ -711,7 +711,18 @@ def _evaluate(
     pred_norm = pred_ola[..., :S].float()
 
     S_norm = pred_norm.shape[-1]
-    total, components = loss_fn.with_components(pred_norm, target[..., :S_norm].float())
+    N_eval = pred_norm.shape[0]
+    total = torch.zeros((), device=device)
+    components: dict[str, torch.Tensor] = {}
+    for start in range(0, N_eval, _EVAL_BATCH):
+        end = min(start + _EVAL_BATCH, N_eval)
+        w = (end - start) / N_eval
+        c_tot, c_comp = loss_fn.with_components(
+            pred_norm[start:end], target[start:end, :S_norm].float()
+        )
+        total = total + c_tot * w
+        for k, v in c_comp.items():
+            components[k] = components.get(k, torch.zeros((), device=device)) + v * w
 
     out: dict[str, object] = {
         "eval/loss": total.item(),
