@@ -115,6 +115,9 @@ run:
   # Checkpoint to initialise the model weights from (fine-tune). Loads model
   # weights only; optimizer and step start fresh.
   init_ckpt: null
+  # If true and init_ckpt is provided, also restore optimizer state and step
+  # counter to resume training from the checkpoint.
+  resume: false
 
 hydra:
   run:

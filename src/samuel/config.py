@@ -115,6 +115,9 @@ class RunConfig(BaseModel):
     # Initialise model weights from this checkpoint (fine-tune). Only loads the model
     # state dict; optimizer, step counter, and data order start fresh.
     init_ckpt: Path | None = None
+    # If True and init_ckpt is provided, also restore optimizer state and step
+    # counter to resume training from the checkpoint.
+    resume: bool = False
 
     @field_validator("runs_root")
     @classmethod

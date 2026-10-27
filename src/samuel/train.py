@@ -856,11 +856,12 @@ def main(hydra_cfg: DictConfig) -> None:
 
     # Model
     model = PinkTromboneController(cfg.model).to(device)
+    ckpt: dict[str, object] | None = None
     if cfg.run.init_ckpt is not None:
         ckpt = torch.load(cfg.run.init_ckpt, map_location=device, weights_only=False)
         model.load_state_dict(ckpt["model"])
         if rank == 0:
-            print(f"Initialised model from {cfg.run.init_ckpt} (step {ckpt['step']})")
+            print(f"Initialised model from {cfg.run.init_ckpt} (step {ckpt.get('step')})")
     for field in ("smooth_weights", "accel_weights", "rest_targets", "rest_weights"):
         unknown = set(getattr(cfg.loss, field)) - set(model.trainable_names_)
         if unknown:
@@ -922,6 +923,16 @@ def main(hydra_cfg: DictConfig) -> None:
         weight_decay=cfg.optim.weight_decay,
     )
 
+    resume_step = 0
+    if cfg.run.resume:
+        if cfg.run.init_ckpt is None:
+            raise ValueError("run.resume=true requires run.init_ckpt to be set")
+        if ckpt is not None and "optimizer" in ckpt:
+            optimizer.load_state_dict(ckpt["optimizer"])  # type: ignore[arg-type]
+            resume_step = int(ckpt.get("step", 0))
+            if rank == 0:
+                print(f"Resumed optimizer state and step={resume_step} from {cfg.run.init_ckpt}")
+
     # Data
     loader = build_dataloader(
         cfg.data,
@@ -949,8 +960,8 @@ def main(hydra_cfg: DictConfig) -> None:
             mode=cfg.log.wandb_mode,
         )
 
-    step = 0
-    pbar = tqdm(total=cfg.optim.max_steps, disable=(rank != 0), desc="training")
+    step = resume_step
+    pbar = tqdm(total=cfg.optim.max_steps, initial=step, disable=(rank != 0), desc="training")
 
     data_iter = iter(loader)
     epoch = 0
@@ -966,7 +977,7 @@ def main(hydra_cfg: DictConfig) -> None:
     prune_ckpts = cfg.log.wandb_mode == "online"
     ckpt_artifacts: list[wandb.Artifact] = []
 
-    if rank == 0 and eval_setup is not None:
+    if rank == 0 and eval_setup is not None and step == 0:
         metrics = _evaluate(
             module,
             ddp_module,
